@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <arpa/inet.h>
 
-inline uint64_t htonll(uint64_t x){
+inline uint64_t hton_u64(uint64_t x){
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
     return ((uint64_t)htonl((uint32_t)(x & 0xFFFFFFFFULL)) << 32) |
            (uint64_t)htonl((uint32_t)(x >> 32));
@@ -15,8 +15,20 @@ inline uint64_t htonll(uint64_t x){
 #endif
 }
 
-inline uint64_t ntohll(uint64_t x){
+inline uint64_t ntoh_u64(uint64_t x){
     return htonll(x);
+}
+
+inline double u64_to_double(uint64_t u){
+    double x;
+    std::memcpy(&x, &u, sizeof(x));
+    return x;
+}
+
+inline uint64_t double_to_u64(double x){
+    uint64_t u;
+    std::memcpy(&u, &x, sizeof(u));
+    return u;
 }
 
 struct ByteWriter{
@@ -33,7 +45,13 @@ struct ByteWriter{
     }
 
     void u32(uint32_t value){
-        uint32_t n = htons(value);
+        uint32_t n = htonl(value);
+        auto p = reinterpret_cast<uint8_t*>(&n);
+        buffer.insert(buffer.end(), p, p + sizeof(n));
+    }
+
+    void u64(uint64_t value){
+        uint64_t n = htonll(value);
         auto p = reinterpret_cast<uint8_t*>(&n);
         buffer.insert(buffer.end(), p, p + sizeof(n));
     }

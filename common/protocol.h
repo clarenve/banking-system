@@ -5,7 +5,11 @@ static constexpr uint8_t version_number = 1;
 
 enum class Opcode : uint8_t{
     OPEN_ACCOUNT = 1,
-
+    CLOSE_ACCOUNT = 2,
+    DEPOSIT = 3,
+    WITHDRAW = 4,
+    MONITOR = 5,
+    
 };
 
 enum class Semantics : uint8_t{
