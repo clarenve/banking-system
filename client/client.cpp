@@ -19,6 +19,8 @@ void handle_open_account(int serverSocket, sockaddr_in& srv, Semantics semantic)
 void handle_close_account(int serverSocket, sockaddr_in& srv, Semantics semantic);
 void handle_deposit_or_withdrawal(int serverSocket, sockaddr_in& srv, Semantics semantic, Opcode opcode);
 void handle_monitor(int serverSocket, sockaddr_in& srv, Semantics semantic);
+void handle_view_account(int serverSocket, sockaddr_in& srv, Semantics semantic);
+void handle_transfer(int serverSocket, sockaddr_in& srv, Semantics semantic);
 
 int main(int argc, char** argv){
     if(argc < 4){
@@ -57,6 +59,8 @@ int main(int argc, char** argv){
         std::cout << "3. Deposit\n";
         std::cout << "4. Withdraw\n";
         std::cout << "5. Monitor\n";
+        std::cout << "6. View Account Info\n";
+        std::cout << "7. Transfer Money\n";
         std::cout << "0. Exit\n";
         std::cout << "Enter choice: ";
         std::cin >> choice;
@@ -78,6 +82,12 @@ int main(int argc, char** argv){
             case 5:
                 handle_monitor(serverSocket, srv, semantic);
                 continue;
+            case 6:
+                handle_view_account(serverSocket, srv, semantic);
+                continue;
+            case 7:
+                handle_transfer(serverSocket, srv, semantic);
+                continue;
             case 0:
                 std::cout << "Exiting\n";
                 close(serverSocket);
@@ -85,7 +95,6 @@ int main(int argc, char** argv){
             default:
                 std::cout << "Invalid choice\n";
                 continue;
-                
         }
     }
 }
@@ -168,7 +177,7 @@ void handle_open_account(int serverSocket, sockaddr_in& srv, Semantics semantic)
 
             uint32_t aid = br.u32();
             std::string msg = br.str_u16len();
-            std::cout << msg << "AccountID = " << aid << "\n";
+            std::cout << msg << ". AccountID = " << aid << "\n";
             return;
 
         }catch(const std::exception& e){
@@ -243,9 +252,9 @@ void handle_close_account(int serverSocket, sockaddr_in& srv, Semantics semantic
                 return;
             }
 
-            uint32_t aid = br.u32();
+            uint32_t closed_aid = br.u32();
             std::string msg = br.str_u16len();
-            std::cout << "Request successful. Account aid=" << aid << " has been closed\n";
+            std::cout << msg << ". Account aid = " << closed_aid << "\n";
             return;
 
         }catch(const std::exception& e){
@@ -259,7 +268,7 @@ void handle_deposit_or_withdrawal(int serverSocket, sockaddr_in& srv, Semantics 
     std::string name, password;
     uint32_t aid = {};
     int currency_in_int = {};
-    Currency currency;
+    Currency currency{};
     double amount = {};
 
     std::cout << "Enter name: ";
@@ -271,10 +280,10 @@ void handle_deposit_or_withdrawal(int serverSocket, sockaddr_in& srv, Semantics 
     std::cout << "\nEnter Account ID: ";
     std::cin >> aid;
 
-    std::cout << "\n Enter currency (0 = SGD, 1 = RM): ";
+    std::cout << "\nEnter currency (0 = SGD, 1 = RM): ";
     std::cin >> currency_in_int;
 
-    currency_in_int == 0 ? currency = Currency::SGD : currency = Currency::RM;
+    currency = (currency_in_int == 0) ? Currency::SGD : Currency::RM;
 
     std::cout << "\nEnter amount: ";
     std::cin >> amount;
@@ -336,7 +345,7 @@ void handle_deposit_or_withdrawal(int serverSocket, sockaddr_in& srv, Semantics 
             if(status == Status::SUCCESS){
                 double balance = u64_to_double(br.u64());
                 std::string msg = br.str_u16len();
-                std::cout << msg << "New balance: " << balance << "\n";
+                std::cout << msg << ". New balance: " << balance << "\n";
                 return;
             }else{
                 std::string msg = br.str_u16len();
@@ -408,60 +417,256 @@ void handle_monitor(int serverSocket, sockaddr_in& srv, Semantics semantic){
 
             if(status == Status::ERROR){
                 std::string msg = br.str_u16len();
-                std::cout << "Error: " << msg << "\n";
+                std::cout << "Monitor request failed. Error: " << msg << "\n";
                 return;
-            }else{
-                std::string msg = br.str_u16len();
-                std::cout << msg << "\n";
+            }
 
-                auto end_time = std::chrono::steady_clock::now() + std::chrono::seconds(interval_in_seconds);
-    
-                while(std::chrono::steady_clock::now() < end_time){
-                    sockaddr_in callback_from {};
-                    socklen_t callback_len = sizeof(callback_from);
+            std::string msg = br.str_u16len();
+            std::cout << msg << "\n";
+            std::cout << "Waiting for callback updates...\n";
 
-                    ssize_t callback_bytes = recvfrom(serverSocket, reply_buffer, sizeof(reply_buffer), 0, (sockaddr*)&callback_from, &callback_len);
-                    if(callback_bytes < 0){
+            auto end_time = std::chrono::steady_clock::now() + std::chrono::seconds(interval_in_seconds);
+
+            while(std::chrono::steady_clock::now() < end_time){
+                sockaddr_in update_from{};
+                socklen_t update_len = sizeof(update_from);
+
+                ssize_t update_bytes = recvfrom(serverSocket, reply_buffer, sizeof(reply_buffer), 0,
+                                                (sockaddr*)&update_from, &update_len);
+
+                if(update_bytes < 0){
+                    continue;
+                }
+
+                try{
+                    ByteReader update_br(reply_buffer, static_cast<size_t>(update_bytes));
+
+                    uint8_t update_version = update_br.u8();
+                    Opcode update_opcode = static_cast<Opcode>(update_br.u8());
+                    (void)update_br.u16();
+
+                    if(update_version != version_number){
+                        std::cout << "Ignoring callback with wrong version\n";
                         continue;
                     }
-                    
-                    try{
-                        ByteReader callback_reader(reply_buffer, static_cast<size_t>(callback_bytes));
 
-                        uint8_t callback_version = callback_reader.u8();
-                    Opcode callback_opcode = static_cast<Opcode>(callback_reader.u8());
-                    (void)callback_reader.u16();
+                    std::string account_name = update_br.str_u16len();
+                    uint32_t account_aid = update_br.u32();
+                    Currency account_currency = static_cast<Currency>(update_br.u8());
+                    double account_balance = u64_to_double(update_br.u64());
+                    std::string update_msg = update_br.str_u16len();
 
-                    if(callback_version != version_number){
-                        continue;
-                    }
+                    std::cout << "\n=== CALLBACK UPDATE ===\n";
+                    std::cout << "Operation: " << static_cast<int>(update_opcode) << "\n";
+                    std::cout << "Name: " << account_name << "\n";
+                    std::cout << "Account ID: " << account_aid << "\n";
+                    std::cout << "Currency: " << (account_currency == Currency::SGD ? "SGD" : "RM") << "\n";
+                    std::cout << "Balance: " << account_balance << "\n";
+                    std::cout << "Message: " << update_msg << "\n";
+                    std::cout << "=======================\n";
 
-                    std::string name = callback_reader.str_u16len();
-                    uint32_t aid = callback_reader.u32();
-                    Currency currency = static_cast<Currency>(callback_reader.u8());
-                    double balance = u64_to_double(callback_reader.u64());
-                    std::string callback_msg = callback_reader.str_u16len();
-
-                    std::cout << "[MONITOR] "
-                              << "opcode=" << static_cast<int>(callback_opcode)
-                              << " name=" << name
-                              << " aid=" << aid
-                              << " currency=" << static_cast<int>(currency)
-                              << " balance=" << balance
-                              << " msg=" << callback_msg << "\n";
-                    }catch(const std::exception& e){
-                        std::cerr << "Monitor callback error: " << e.what() << "\n";
-                    }
-                
+                }catch(const std::exception& e){
+                    std::cerr << "Callback parse error: " << e.what() << "\n";
                 }
             }
+
             std::cout << "Monitor interval expired\n";
             return;
-            
+
         }catch(const std::exception& e){
             std::cerr << "Error: " << e.what() << "\n";
         }
     }
-    std::cout << "No reply from server\n";
 
+    std::cout << "No reply from server\n";
+}
+
+void handle_view_account(int serverSocket, sockaddr_in& srv, Semantics semantic){
+    std::string name, password;
+    uint32_t aid = {};
+
+    std::cout << "Enter name: ";
+    std::getline(std::cin, name);
+
+    std::cout << "Enter password: ";
+    std::getline(std::cin, password);
+
+    std::cout << "Enter Account ID: ";
+    std::cin >> aid;
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    ByteWriter bw;
+    bw.u8(version_number);
+    bw.u8(static_cast<uint8_t>(Opcode::VIEW_ACCOUNT));
+    bw.u8(static_cast<uint8_t>(semantic));
+    bw.u8(0);
+    uint32_t current_rid = next_rid++;
+    bw.u32(current_rid);
+
+    bw.str_with_len(name);
+    bw.str_with_len(password);
+    bw.u32(aid);
+
+    uint8_t reply_buffer[2048];
+    int attempts = semantic == Semantics::AT_LEAST_ONCE ? 3 : 1;
+
+    for(int i = 1; i <= attempts; i++){
+        ssize_t bytes_sent = sendto(serverSocket, bw.buffer.data(), bw.buffer.size(), 0, (sockaddr*)&srv, sizeof(srv));
+        if(bytes_sent < 0){
+            perror("sendto");
+            continue;
+        }
+
+        sockaddr_in from{};
+        socklen_t flen = sizeof(from);
+
+        ssize_t bytes_received = recvfrom(serverSocket, reply_buffer, sizeof(reply_buffer), 0, (sockaddr*)&from, &flen);
+        if(bytes_received < 0){
+            std::cout << "Timeout on attempt " << i << "\n";
+            continue;
+        }
+
+        try{
+            ByteReader br(reply_buffer, static_cast<size_t>(bytes_received));
+
+            uint8_t version = br.u8();
+            Status status = static_cast<Status>(br.u8());
+            (void)br.u16();
+            uint32_t reply_rid = br.u32();
+
+            if(reply_rid != current_rid){
+                std::cout << "Wrong rid received. Retrying...\n";
+                continue;
+            }
+
+            if(version != version_number){
+                std::string msg = br.str_u16len();
+                std::cout << "Error: " << msg << " Please update client to latest version\n";
+                return;
+            }
+
+            if(status == Status::SUCCESS){
+                Currency currency = static_cast<Currency>(br.u8());
+                double balance = u64_to_double(br.u64());
+                std::string msg = br.str_u16len();
+
+                std::cout << msg << "\n";
+                std::cout << "Currency: " << (currency == Currency::SGD ? "SGD" : "RM") << "\n";
+                std::cout << "Balance: " << balance << "\n";
+                return;
+            }else{
+                std::string msg = br.str_u16len();
+                std::cout << "Error: " << msg << "\n";
+                return;
+            }
+
+        }catch(const std::exception& e){
+            std::cerr << "Error: " << e.what() << "\n";
+        }
+    }
+
+    std::cout << "No reply from server\n";
+}
+
+void handle_transfer(int serverSocket, sockaddr_in& srv, Semantics semantic){
+    std::string sender_name, sender_password;
+    std::string recipient_name;
+    uint32_t sender_aid = {};
+    uint32_t recipient_aid = {};
+    double amount = {};
+
+    std::cout << "Enter sender name: ";
+    std::getline(std::cin, sender_name);
+
+    std::cout << "Enter sender password: ";
+    std::getline(std::cin, sender_password);
+
+    std::cout << "Enter sender Account ID: ";
+    std::cin >> sender_aid;
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    std::cout << "Enter recipient name: ";
+    std::getline(std::cin, recipient_name);
+
+    std::cout << "Enter recipient Account ID: ";
+    std::cin >> recipient_aid;
+
+    std::cout << "Enter transfer amount: ";
+    std::cin >> amount;
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+    ByteWriter bw;
+    bw.u8(version_number);
+    bw.u8(static_cast<uint8_t>(Opcode::TRANSFER));
+    bw.u8(static_cast<uint8_t>(semantic));
+    bw.u8(0);
+    uint32_t current_rid = next_rid++;
+    bw.u32(current_rid);
+
+    bw.str_with_len(sender_name);
+    bw.str_with_len(sender_password);
+    bw.u32(sender_aid);
+    bw.str_with_len(recipient_name);
+    bw.u32(recipient_aid);
+    bw.u64(double_to_u64(amount));
+
+    uint8_t reply_buffer[2048];
+    int attempts = semantic == Semantics::AT_LEAST_ONCE ? 3 : 1;
+
+    for(int i = 1; i <= attempts; i++){
+        ssize_t bytes_sent = sendto(serverSocket, bw.buffer.data(), bw.buffer.size(), 0, (sockaddr*)&srv, sizeof(srv));
+        if(bytes_sent < 0){
+            perror("sendto");
+            continue;
+        }
+
+        sockaddr_in from{};
+        socklen_t flen = sizeof(from);
+
+        ssize_t bytes_received = recvfrom(serverSocket, reply_buffer, sizeof(reply_buffer), 0, (sockaddr*)&from, &flen);
+        if(bytes_received < 0){
+            std::cout << "Timeout on attempt " << i << "\n";
+            continue;
+        }
+
+        try{
+            ByteReader br(reply_buffer, static_cast<size_t>(bytes_received));
+
+            uint8_t version = br.u8();
+            Status status = static_cast<Status>(br.u8());
+            (void)br.u16();
+            uint32_t reply_rid = br.u32();
+
+            if(reply_rid != current_rid){
+                std::cout << "Wrong rid received. Retrying...\n";
+                continue;
+            }
+
+            if(version != version_number){
+                std::string msg = br.str_u16len();
+                std::cout << "Error: " << msg << " Please update client to latest version\n";
+                return;
+            }
+
+            if(status == Status::SUCCESS){
+                double sender_balance = u64_to_double(br.u64());
+                double recipient_balance = u64_to_double(br.u64());
+                std::string msg = br.str_u16len();
+
+                std::cout << msg << "\n";
+                std::cout << "Sender new balance: " << sender_balance << "\n";
+                std::cout << "Recipient new balance: " << recipient_balance << "\n";
+                return;
+            }else{
+                std::string msg = br.str_u16len();
+                std::cout << "Error: " << msg << "\n";
+                return;
+            }
+
+        }catch(const std::exception& e){
+            std::cerr << "Error: " << e.what() << "\n";
+        }
+    }
+
+    std::cout << "No reply from server\n";
 }

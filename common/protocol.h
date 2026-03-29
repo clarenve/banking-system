@@ -9,7 +9,8 @@ enum class Opcode : uint8_t{
     DEPOSIT = 3,
     WITHDRAW = 4,
     MONITOR = 5,
-    
+    VIEW_ACCOUNT = 6,
+    TRANSFER = 7,
 };
 
 enum class Semantics : uint8_t{

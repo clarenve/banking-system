@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <limits>
 #include <stdexcept>
 #include <arpa/inet.h>
 
@@ -16,7 +17,7 @@ inline uint64_t hton_u64(uint64_t x){
 }
 
 inline uint64_t ntoh_u64(uint64_t x){
-    return htonll(x);
+    return hton_u64(x);
 }
 
 inline double u64_to_double(uint64_t u){
@@ -34,7 +35,7 @@ inline uint64_t double_to_u64(double x){
 struct ByteWriter{
     std::vector<uint8_t> buffer;
     
-    void u8(uint8_t value){ //1 byte
+    void u8(uint8_t value){
         buffer.push_back(value);
     }
 
@@ -51,7 +52,7 @@ struct ByteWriter{
     }
 
     void u64(uint64_t value){
-        uint64_t n = htonll(value);
+        uint64_t n = hton_u64(value);
         auto p = reinterpret_cast<uint8_t*>(&n);
         buffer.insert(buffer.end(), p, p + sizeof(n));
     }
@@ -62,7 +63,7 @@ struct ByteWriter{
     }
 
     void str_with_len(const std::string& s){
-        if(s.size() > 65535){
+        if(s.size() > UINT16_MAX){
             throw std::runtime_error("string too long");
         }
         u16((uint16_t)s.size());
@@ -107,7 +108,7 @@ struct ByteReader{
         uint64_t v;
         std::memcpy(&v, p + i, 8);
         i += 8;
-        return ntohll(v);
+        return ntoh_u64(v);
     }
 
     std::string str_u16len(){
