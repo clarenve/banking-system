@@ -132,7 +132,7 @@
 
         uint8_t reply_buffer[2048];
 
-        int attempts = semantic == Semantics::AT_LEAST_ONCE ? 3 : 1;
+        int attempts = 3;
 
         for(int i = 1; i <= attempts; i++){
             ssize_t bytes_sent = sendto(serverSocket, bw.buffer.data(), bw.buffer.size(), 0, (sockaddr*)&srv, sizeof(srv));
@@ -213,7 +213,7 @@
         bw.u32(aid);
 
         uint8_t reply_buffer[2048];
-        int attempts = semantic == Semantics::AT_LEAST_ONCE ? 3 : 1;
+        int attempts = 3;
 
         for(int i = 1; i <= attempts; i++){
             ssize_t bytes_sent = sendto(serverSocket, bw.buffer.data(), bw.buffer.size(), 0, (sockaddr*)&srv, sizeof(srv));
@@ -376,7 +376,7 @@
 
         uint8_t reply_buffer[2048];
 
-        int attempts = semantic == Semantics::AT_LEAST_ONCE ? 3 : 1;
+        int attempts = 3;
 
         for(int i = 1; i <= attempts; i++){
             ssize_t bytes_sent = sendto(serverSocket, bw.buffer.data(), bw.buffer.size(), 0, (sockaddr*)&srv, sizeof(srv));
@@ -506,7 +506,7 @@
         bw.u32(aid);
 
         uint8_t reply_buffer[2048];
-        int attempts = semantic == Semantics::AT_LEAST_ONCE ? 3 : 1;
+        int attempts = 3;
 
         for(int i = 1; i <= attempts; i++){
             ssize_t bytes_sent = sendto(serverSocket, bw.buffer.data(), bw.buffer.size(), 0, (sockaddr*)&srv, sizeof(srv));
@@ -609,7 +609,7 @@
         bw.u64(double_to_u64(amount));
 
         uint8_t reply_buffer[2048];
-        int attempts = semantic == Semantics::AT_LEAST_ONCE ? 3 : 1;
+        int attempts = 3;
 
         for(int i = 1; i <= attempts; i++){
             ssize_t bytes_sent = sendto(serverSocket, bw.buffer.data(), bw.buffer.size(), 0, (sockaddr*)&srv, sizeof(srv));
