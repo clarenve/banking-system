@@ -523,7 +523,11 @@ void ServerApp::handle_view_account(ByteReader& br,
     // experiment mode: drop first reply for this rid
     if(experiment_view_ && !dropped_view_reply_rids_.count(rid)){
             dropped_view_reply_rids_.insert(rid);
-            std::cout << "[experiment] dropping first view account reply for rid= " << rid << "\n";
+            std::cout << "[experiment] dropping reply"
+                      << "\nrid: " << rid
+                      << "\nopcode: 6"
+                      << "\ntype: deposit/withdraw"
+                      << "\n\n";
             return;
     }
     send_buffer_to_client(bw.buffer, cli, clen);

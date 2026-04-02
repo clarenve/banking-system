@@ -88,7 +88,7 @@ int main(int argc, char** argv){
     //cli interface for user to select operations
     while(1){
         int choice;
-        std::cout << "===== Banking System =====\n";
+        std::cout << "\n===== Banking System =====\n";
         std::cout << "1. Open Account\n";
         std::cout << "2. Close Account\n";
         std::cout << "3. Deposit\n";
@@ -146,16 +146,16 @@ void handle_open_account(int serverSocket, sockaddr_in& srv, Semantics semantic)
     int currency_in_int = {};
     double balance = {};
 
-    std::cout << "Name: ";
+    std::cout << "\nName: ";
     std::getline(std::cin, name);
 
-    std::cout << "\nPassword: ";
+    std::cout << "Password: ";
     std::getline(std::cin, password);
 
-    std::cout << "\nCurrency (0 = SGD, 1 = RM): ";
+    std::cout << "Currency (0 = SGD, 1 = RM): ";
     std::cin >> currency_in_int;
 
-    std::cout << "\nInitial balance: ";
+    std::cout << "Initial balance: ";
     std::cin >> balance;
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
@@ -190,7 +190,7 @@ void handle_open_account(int serverSocket, sockaddr_in& srv, Semantics semantic)
         ssize_t bytes_received = recvfrom(serverSocket, reply_buffer, sizeof(reply_buffer), 0, (sockaddr*)&from, &flen);
 
         if(bytes_received < 0){
-            std::cout << "Timeout on attempt " << i << "\n";
+            std::cout << "\nTimeout on attempt " << i << "\n";
             continue;
         }
 
@@ -238,7 +238,7 @@ void handle_close_account(int serverSocket, sockaddr_in& srv, Semantics semantic
     std::string name, password;
     uint32_t aid = {};
 
-    std::cout << "Enter name: ";
+    std::cout << "\nEnter name: ";
     std::getline(std::cin, name);
     
     std::cout << "Enter password: ";
@@ -276,7 +276,7 @@ void handle_close_account(int serverSocket, sockaddr_in& srv, Semantics semantic
 
         ssize_t bytes_received = recvfrom(serverSocket, reply_buffer, sizeof(reply_buffer),0 , (sockaddr*)&from, &flen);
         if(bytes_received < 0){
-            std::cout << "Timeout on attempt " << i << "\n";
+            std::cout << "\nTimeout on attempt " << i << "\n";
             continue;
         }
 
@@ -325,21 +325,21 @@ void handle_deposit_or_withdrawal(int serverSocket, sockaddr_in& srv, Semantics 
     Currency currency{};
     double amount = {};
 
-    std::cout << "Enter name: ";
+    std::cout << "\nEnter name: ";
     std::getline(std::cin, name);
 
-    std::cout << "\nEnter password: ";
+    std::cout << "Enter password: ";
     std::getline(std::cin, password);
 
-    std::cout << "\nEnter Account ID: ";
+    std::cout << "Enter Account ID: ";
     std::cin >> aid;
 
-    std::cout << "\nEnter currency (0 = SGD, 1 = RM): ";
+    std::cout << "Enter currency (0 = SGD, 1 = RM): ";
     std::cin >> currency_in_int;
 
     currency = (currency_in_int == 0) ? Currency::SGD : Currency::RM;
 
-    std::cout << "\nEnter amount: ";
+    std::cout << "Enter amount: ";
     std::cin >> amount;
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
@@ -365,7 +365,7 @@ void handle_deposit_or_withdrawal(int serverSocket, sockaddr_in& srv, Semantics 
 
         //experiment mode: drop first request to simulate request loss
         if((i == 1) && experiment_deposit_withdraw){
-            std::cout << "[experiment] dropping first deposit/withdraw request\n";
+            std::cout << "\n[experiment] dropping first deposit/withdraw request\n";
             continue;
         }
 
@@ -380,7 +380,7 @@ void handle_deposit_or_withdrawal(int serverSocket, sockaddr_in& srv, Semantics 
 
         ssize_t bytes_received = recvfrom(serverSocket, reply_buffer, sizeof(reply_buffer), 0, (sockaddr*)&from, &flen);
         if(bytes_received < 0){
-            std::cout << "Timeout on attempt " << i << "\n";
+            std::cout << "\nTimeout on attempt " << i << "\n";
             continue;
         }
 
@@ -406,7 +406,7 @@ void handle_deposit_or_withdrawal(int serverSocket, sockaddr_in& srv, Semantics 
             if(status == Status::SUCCESS){
                 double balance = u64_to_double(br.u64());
                 std::string msg = br.str_u16len();
-                std::cout << msg << ". New balance: " << balance << "\n";
+                std::cout << "\n" << msg << ". New balance: " << balance << "\n";
                 return;
             }else{
                 std::string msg = br.str_u16len();
@@ -459,7 +459,7 @@ void handle_monitor(int serverSocket, sockaddr_in& srv, Semantics semantic){
 
         ssize_t bytes_received = recvfrom(serverSocket, reply_buffer, sizeof(reply_buffer), 0, (sockaddr*)&from, &flen);
         if(bytes_received < 0){
-            std::cout << "Timeout on attempt " << i << "\n";
+            std::cout << "\nTimeout on attempt " << i << "\n";
             continue;
         }
 
@@ -558,7 +558,7 @@ void handle_view_account(int serverSocket, sockaddr_in& srv, Semantics semantic)
     std::string name, password;
     uint32_t aid = {};
 
-    std::cout << "Enter name: ";
+    std::cout << "\nEnter name: ";
     std::getline(std::cin, name);
 
     std::cout << "Enter password: ";
@@ -588,7 +588,7 @@ void handle_view_account(int serverSocket, sockaddr_in& srv, Semantics semantic)
 
         //experiment mode: drop first request to simulate request loss
         if((i == 1) && experiment_view){
-            std::cout << "[experiment] dropping first view account request\n";
+            std::cout << "\n[experiment] dropping first view account request\n";
             continue;
         }
 
@@ -603,7 +603,7 @@ void handle_view_account(int serverSocket, sockaddr_in& srv, Semantics semantic)
 
         ssize_t bytes_received = recvfrom(serverSocket, reply_buffer, sizeof(reply_buffer), 0, (sockaddr*)&from, &flen);
         if(bytes_received < 0){
-            std::cout << "Timeout on attempt " << i << "\n";
+            std::cout << "\nTimeout on attempt " << i << "\n";
             continue;
         }
 
@@ -712,7 +712,7 @@ void handle_transfer(int serverSocket, sockaddr_in& srv, Semantics semantic){
 
         ssize_t bytes_received = recvfrom(serverSocket, reply_buffer, sizeof(reply_buffer), 0, (sockaddr*)&from, &flen);
         if(bytes_received < 0){
-            std::cout << "Timeout on attempt " << i << "\n";
+            std::cout << "\nTimeout on attempt " << i << "\n";
             continue;
         }
 
@@ -739,7 +739,7 @@ void handle_transfer(int serverSocket, sockaddr_in& srv, Semantics semantic){
                 double sender_balance = u64_to_double(br.u64());
                 std::string msg = br.str_u16len();
 
-                std::cout << msg << "\n";
+                std::cout << "\n" << msg << "\n";
                 std::cout << "Sender new balance: " << sender_balance << "\n";
                 return;
             }else{
