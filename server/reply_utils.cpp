@@ -1,3 +1,8 @@
+/*
+reply_utils.cpp implements reply construction helpers
+- facilitates consistent reply format for all responses
+*/
+
 #include "reply_utils.h"
 
 ByteWriter build_reply_header(Status status, uint32_t rid){

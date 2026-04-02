@@ -1,5 +1,10 @@
-#pragma once
+/*
+reply_utils.h provides helper functions for building reply messages
+- constructs standard reply header (status + rid)
+- used by server handlers to create responses
+*/
 
+#pragma once
 #include <cstdint>
 
 #include "../common/protocol.h"

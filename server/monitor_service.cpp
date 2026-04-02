@@ -1,4 +1,9 @@
-#include "monitor_service.h"
+/*
+monitor_service.cpp implements monitor registration and callbacks
+- handles adding and refreshing monitor clients
+- removes expired monitor clients
+- sends updates when account state changes
+*/
 
 #include <iostream>
 #include <algorithm>
@@ -6,9 +11,11 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "monitor_service.h"
 #include "../common/protocol.h"
 #include "../common/marshalling.h"
 
+//remove monitor clients whose subscription interval has expired
 void MonitorService::prune_expired_monitors(){
     auto now = std::chrono::steady_clock::now();
 
@@ -24,6 +31,7 @@ void MonitorService::prune_expired_monitors(){
     );
 }
 
+//add new monitor client or refresh existing subscription
 void MonitorService::register_or_refresh(const sockaddr_in& cli, uint32_t interval_in_seconds){
     prune_expired_monitors();
 
@@ -47,6 +55,7 @@ void MonitorService::register_or_refresh(const sockaddr_in& cli, uint32_t interv
     }
 }
 
+//send callback updates to all active monitor clients
 void MonitorService::notify_monitors(int serverSocket, Opcode opcode, const Account& acc, const std::string& msg){
     prune_expired_monitors();
 

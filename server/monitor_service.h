@@ -1,5 +1,11 @@
-#pragma once
+/*
+monitor_service.h defines the monitor service
+- allows clients to subscribe for account updates
+- stores active monitor clients with expiry time
+- used by server to send callback notifications
+*/
 
+#pragma once
 #include <vector>
 #include <string>
 
